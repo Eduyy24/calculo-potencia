@@ -20,7 +20,7 @@
 .App .sub-container {
   display: flex;
   justify-content: space-around;
-  margin-top: 3rem;
+  margin: 3rem 0rem;
 }
 
 .App .sub-container section{
@@ -29,10 +29,22 @@
   min-height: 300px;
   border-radius: 1rem;
   padding: 1rem;
+  margin-bottom: 3rem;
 }
 
 .App .container-button {
   display: flex;
   justify-content: center;
   margin-top: 2rem;
+}
+
+.App .angle {
+  border-left: 1px solid black;
+  border-bottom: 1px solid black;
+}
+
+.App .note {
+  font-size: 0.7rem;
+  font-weight: 400;
+  margin-top: 0.5rem;
 }
