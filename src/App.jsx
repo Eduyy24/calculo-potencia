@@ -1,5 +1,5 @@
 import './App.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Radio, Input } from 'antd';
 const Complex = require('complex.js');
 
@@ -50,6 +50,9 @@ const getComplexCart = ({real, img}) => {
 }
 
 const calcIr = ({
+  A,
+  B,
+  Vs,
   load,
   Fp,
   Vr,
@@ -57,28 +60,30 @@ const calcIr = ({
   inpIrA,
   inpIrV
 }) => {
-  if (inpIrV) {
+  if (inpIrV) { // Caso 1:  si el usuario dijitó un valor para Ir
     return getComplexPol({
       magnitude: parseFloat(inpIrV),
       angle: angToRad(inpIrA || '0')
     })
-  } else if(Is) {
-    return Is
-  } else if(load && Fp && Vr) {
+  } else if(load && Fp && Vr) { // caso 3:  retorna Ir del calculo usando la formula de potencia
+      // Ir = P / Raiz(3) * Vr * cos(θ)
       const magnitude = (load / (raiz3 * Vr * Fp) );
       const angle = -Math.acos(Fp) // en radianes y negativo dado que está en atraso
 
       return getComplexPol({magnitude, angle})
+    } else if(Vs && A && Vr && B) { // caso 4: cuando tengo Vs, A, Vr, B usando la formula
+      // Ir = (Vs - AVr) / B
+      return (Vs.sub(A.mul(Vr))).div(B)
     }
 
   return ''
 }
 
-const calclVs = ({A,B,Vr,Ir, inpVsA, inpVsV}) => {
+const calcVs = ({A,B,Vr,Ir, inpVsA, inpVsV, δ}) => {
   if(inpVsV){
     return getComplexPol({
       magnitude: parseFloat(inpVsV) * x10_3,
-      angle: angToRad(inpVsA || '0')
+      angle: angToRad(inpVsA || δ || '0' )
     })
   } else if(A && B && Vr && Ir) {
     // Vs = AVr + BIr
@@ -92,7 +97,7 @@ const calclVs = ({A,B,Vr,Ir, inpVsA, inpVsV}) => {
   return ''
 }
 
-const calcA = ({line, inpAV, inpAA}) => {
+const calcA = ({line, inpAV, inpAA, Y, Z}) => {
   if(inpAV) {
     return getComplexPol({
       magnitude: parseFloat(inpAV),
@@ -105,7 +110,10 @@ const calcA = ({line, inpAV, inpAA}) => {
       case 'corta':
         return Complex(1,0)
       case 'media':
-        return ''
+        if(Z && Y) {
+          return ((Z.mul(Y)).mul(0.5)).add(1)
+        }
+        break;
       case 'larga':
         break;
       default:
@@ -129,7 +137,7 @@ const calcB = ({line, inpBV, inpBA, Z}) => {
       case 'corta':
         return Z;
       case 'media':
-        break;
+        return Z;
       case 'larga':
         break;
       default:
@@ -140,7 +148,7 @@ const calcB = ({line, inpBV, inpBA, Z}) => {
   return ''
 }
 
-const calcD = ({line, inpDV, inpDA}) => {
+const calcD = ({line, inpDV, inpDA, Y, Z}) => {
   if(inpDV) {
     return getComplexPol({
       magnitude: parseFloat(inpDV),
@@ -153,6 +161,9 @@ const calcD = ({line, inpDV, inpDA}) => {
       case 'corta':
         return Complex(1,0);
       case 'media':
+        if(Z && Y) {
+          return ((Z.mul(Y)).mul(0.5)).add(1)
+        }
         break;
       case 'larga':
         break;
@@ -183,50 +194,62 @@ const calcDelta = ({ Vs, Vr, Ps, A, B, D, inpVsA}) => {
   return ''
 };
 
-const calcPs = ({inpPs}) => {
+const calcPs = ({inpPs, D, B, Vs, Vr, A}) => {
   if(inpPs) {
     return parseFloat(inpPs)
+  } else if (D && B && Vs && Vr && A) {
+    const val1 = (((D.abs() * Math.pow(Vs.abs(), 2))/ B.abs()) * Math.Cos(B.arg() - A.arg()))
+    const val2 = (((Vs.abs() * Vr)/ B.abs()) * Math.Cos(B.arg() + Vs.arg()))
+    return val1 - val2
   }
   return ''
 }
 
-const calcPr = ({inpPr}) => {
+const calcPr = ({inpPr, B, Vs, A, Vr}) => {
   if(inpPr) {
     return parseFloat(inpPr)
+  } else if (B && Vs && Vr && A) {
+    const val1 = (((Vs.abs() * Vr)/ B.abs()) * Math.Cos(B.arg() - Vs.arg()))
+    const val2 = (((A.abs() * Math.pow(Vr, 2))/ B.abs()) * Math.Cos(B.arg() - A.arg()))
+    return val1 - val2
   }
   return ''
 }
 
-const calcQs = ({inpQs}) => {
-  if(inpQs) {
+const calcQs = ({inpQs, D, B, Vs, A, Vr}) => {
+  if(inpQs) { // cuando lo ingresa el usuario
     return parseFloat(inpQs)
+  } else if (D && B && Vs && Vr && A) {
+    const val1 = (((D.abs() * Math.pow(Vs.abs(), 2))/ B.abs()) * Math.Sin(B.arg() - A.arg()))
+    const val2 = (((Vs.abs() * Vr)/ B.abs()) * Math.Sin(B.arg() + Vs.arg()))
+    return val1 - val2
   }
   return ''
 }
 
-const calcQr = ({inpQr}) => {
+const calcQr = ({inpQr, B, Vs, Vr, A}) => {
   if(inpQr) {
     return parseFloat(inpQr)
+  } else if (B && Vs && Vr && A) {
+    const val1 = (((Vs.abs() * Vr)/ B.abs()) * Math.Sin(B.arg() - Vs.arg()))
+    const val2 = (((A.abs() * Math.pow(Vr, 2))/ B.abs()) * Math.Sin(B.arg() - A.arg()))
+    return val1 - val2
   }
   return ''
 }
 
-const calcIs = ({Ir, D, B, Vs, Vr}) => {
-  if (Ir) {
-    return Ir;
-  } else if(D && B && Vs && Vr) {
+const calcIs = ({ D, B, Vs, Vr}) => {
+  if(D && B && Vs && Vr) {
     return (D.mul(Vs).sub(Vr)).div(B)
   }
   return ''
 }
 
 const calcVr = ({inpVrV, Vs, B, Ir, A}) => {
-  console.log(inpVrV, Vs, B, Ir, A);
   if(inpVrV) {
     return parseFloat(inpVrV) * x10_3
   } else if (Vs && B && Ir && A) {
     // Vr = (Vs - BIR ) / A
-    console.log('calcVr', (Vs.sub(B.mul(Ir))).div(A));
     return ((Vs.sub(B.mul(Ir))).div(A)).abs()
   }
   return ''
@@ -256,38 +279,166 @@ function App() {
   const [inpIrA, setInpIrA] = useState('');
 
   // variables
-  let Ir, Is, Z, θ, A, B, D, Vs, Vr, Ps, Pr, δ, Qs, Qr;
-
   const load = parseFloat(inpLoad) * x10_6; // multiplico x10^6 para pasarlo a MV
   const Fp = parseFloat(inpFP);
 
-  Ir = calcIr({load, Fp, Vr, Is, inpIrV, inpIrA}); // complejo
+  const [Ir, setIr] = useState();
+  const [Is, setIs] = useState();
+  const [Z, setZ] = useState();
+  const [θ, setθ] = useState();
+  const [A, setA] = useState();
+  const [B, setB] = useState();
+  const [D, setD] = useState();
+  const [Vs, setVs] = useState();
+  const [Vr, setVr] = useState();
+  const [Ps, setPs] = useState();
+  const [Pr, setPr] = useState();
+  const [δ, setδ] = useState();
+  const [Qs, setQs] = useState();
+  const [Y, setY] = useState();
 
-  Z =  getComplexCart({real: inpZR, img: inpZI}) // complejo
+  const [Qr, setQr] = useState();
 
-  θ = Z ? radToAng(Z.arg()) : '';
+  useEffect(() => {
+    // Vr
+    setVr((prevState) => {
+      const calc = calcVr({inpVrV, Ir, B, Vs, A});
+      return prevState === calc ? prevState : calc;
+    }) // real
+  }, [A, B, Ir, Vs, inpVrV])
 
-  A = calcA({line, inpAA, inpAV}); // complejo
+  useEffect(() => {
+    // Qs
+    setQs((prevState) => {
+      const calc = calcQs({inpQs,D, B, Vs, A, Vr});
+      return prevState === calc ? prevState : calc;
+    }) // real
+  }, [A, B, D, Vr, Vs, inpQs])
 
-  B = calcB({line, inpBA, inpBV, Z}) // complejo
+  useEffect(() => {
+    // Z
+    setZ((prevState) => {
+      const calc = getComplexCart({real: inpZR, img: inpZI});
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [inpZI, inpZR])
 
-  D = calcD({line, inpDA, inpDV}) // complejo
+  useEffect(() => {
+    // θ
+    setθ((prevState) => {
+      const calc = Z ? radToAng(Z.arg()) : '';
+      return prevState === calc ? prevState : calc;
+    }); // real °
+  }, [Z])
 
-  Vs = calclVs({A, B, Vr, Ir, inpVsA, inpVsV}) // complejo
+  useEffect(() => {
+    // A
+    setA((prevState) => {
+      const calc = calcA({line, inpAA, inpAV, Y, Z});
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }); // complejo
+  }, [inpAA, inpAV, line, Y, Z])
 
-  Ps = calcPs({inpPs})
+  useEffect(() => {
+    // B
+    setB((prevState) => {
+      const calc = calcB({line, inpBA, inpBV, Z});
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [Z, inpBA, inpBV, line])
 
-  δ = calcDelta({Vs, Vr, inpVsA, Ps, A, B, D})
+  useEffect(() => {
+    // D
+    setD((prevState) => {
+      const calc = calcD({line, inpDA, inpDV, Y, Z});
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [inpDA, inpDV, line, Y, Z])
 
-  Pr = calcPr({inpPr})
+  useEffect(() => {
+    // Vs
+    setVs((prevState) => {
+      const calc = calcVs({A, B, Vr, Ir, inpVsA, inpVsV, δ})
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [A, B, Ir, Vr, inpVsA, inpVsV, δ])
 
-  Qs = calcQs({inpQs})
+  useEffect(() => {
+    // Ps
+    setPs((prevState) => {
+      const calc = calcPs({inpPs, D, B, Vs, Vr, A})
+      return prevState === calc ? prevState : calc;
+    })// real
+  }, [A, B, D, Vr, Vs, inpPs])
 
-  Qr = calcQr({inpQr})
+  useEffect(() => {
+    // δ
+    setδ((prevState) => {
+      const calc = calcDelta({Vs, Vr, inpVsA, Ps, A, B, D})
+      return prevState === calc ? prevState : calc;
+    }) // real °
+  }, [A, B, D, Ps, Vr, Vs, inpVsA])
 
-  Is = calcIs({Ir, D, B, Vr, Vs})
+  useEffect(() => {
+    // Pr
+    setPr((prevState) => {
+      const calc = calcPr({inpPr, B, Vs, A, Vr});
+      return prevState === calc ? prevState : calc;
+    }) // real
+  }, [A, B, Vr, Vs, inpPr])
 
-  Vr = calcVr({inpVrV, Ir, B, Vs, A}); // real
+  useEffect(() => {
+    // Qr
+    setQr((prevState) => {
+      const calc = calcQr({inpQr, B, Vs, A, Vr});
+      return prevState === calc ? prevState : calc;
+    }) // real
+  }, [A, B, Vr, Vs, inpQr])
+
+  useEffect(() => {
+    // Is
+    setIs((prevState) => {
+      const calc = calcIs({Ir, D, B, Vr, Vs})
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [B, D, Ir, Vr, Vs])
+
+  useEffect(() => {
+    // Ir
+    setIr((prevState) => {
+      const calc = calcIr({load, Fp, Vr, Is, inpIrV, inpIrA, Vs, A, B})
+      if(!prevState){
+        return calc
+      } else  if (calc && prevState) {
+          return calc.equals(prevState) ? prevState : calc;
+      }
+    }) // complejo
+  }, [A, B, Fp, Is, Vr, Vs, inpIrA, inpIrV, load])
+
 
   return (
     <div className="App">
@@ -302,11 +453,19 @@ function App() {
             <Radio.Button value="larga">Larga</Radio.Button>
           </Radio.Group>
 
-          <p>Impedancia de la línea</p>
+          <p>Z</p>
           <span>Real</span>
           <Input onChange={(e) => {setInpZR(e.target.value)}} placeholder="1" />
           <span>Img (i)</span>
           <Input onChange={(e) => {setInpZI(e.target.value)}} />
+
+          <p>Y</p>
+          <span>Img (i)</span>
+          <Input onChange={(e) => {
+            if(e.target.value){
+              setY(getComplexCart({real: 0, img: parseFloat(e.target.value)}))
+            }
+          }}/>
 
           <p>Vs</p>
           <span>Valor (KV)</span>
