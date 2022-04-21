@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/calculo-potencia/static/css/main.eca88293.css",
+    "main.js": "/calculo-potencia/static/js/main.c0228b01.js",
+    "static/js/787.41b2c2d3.chunk.js": "/calculo-potencia/static/js/787.41b2c2d3.chunk.js",
+    "index.html": "/calculo-potencia/index.html",
+    "main.eca88293.css.map": "/calculo-potencia/static/css/main.eca88293.css.map",
+    "main.c0228b01.js.map": "/calculo-potencia/static/js/main.c0228b01.js.map",
+    "787.41b2c2d3.chunk.js.map": "/calculo-potencia/static/js/787.41b2c2d3.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.eca88293.css",
+    "static/js/main.c0228b01.js"
+  ]
+}
