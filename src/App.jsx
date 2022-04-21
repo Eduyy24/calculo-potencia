@@ -472,7 +472,7 @@ function App() {
           <Input onChange={(e) => {setInpVsV(e.target.value)}} placeholder="100" />
           <span>Angulo (°)</span>
           <Input onChange={(e) => {setInpVsA(e.target.value)}} />
-          <p className='note'>Nota: El angulo debe estar vacio, si desea calcular: δ</p>
+          <p className='note'>Nota: El angulo debe estar vacío, si desea calcular: δ</p>
 
           <p>Vr</p>
           <span>Valor (KV)</span>
